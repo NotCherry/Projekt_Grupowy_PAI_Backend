@@ -1,3 +1,4 @@
+from typing import List
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -11,4 +12,4 @@ class Product(Base):
     price = Column(Integer)
     image = Column(String)
     category = Column(String, default="flower")
-    max_quantity = Column(Integer, default=0)  
+    max_quantity = Column(Integer, default=0)

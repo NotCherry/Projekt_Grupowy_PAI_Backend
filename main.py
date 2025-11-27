@@ -8,24 +8,27 @@ from sqlalchemy import func
 import os
 from database import engine, get_db, SessionLocal
 from models import Base, Product
+from typing import List, Optional
+from pydantic import BaseModel
+from ai_service import generate_bouquet_visualization
 
 app = FastAPI()
 
 origins = [
-    "http://localhost:5500",   
+    "http://localhost:5500",    
     "http://127.0.0.1:5500",
     "http://localhost:9000",
     "http://127.0.0.1:9000",
     "*",
 ]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 app.mount("/images", StaticFiles(directory="images"), name="images")
 
@@ -96,6 +99,7 @@ def list_flowers(db: Session = Depends(get_db)):
     flowers = db.query(Product).filter(Product.category == "flower").all()
     return [
         {
+            "id": f.id,
             "name": f.name,
             "price": f.price,
             "image": f"/images/{f.image}",
@@ -109,6 +113,7 @@ def list_foliage(db: Session = Depends(get_db)):
     foliage = db.query(Product).filter(Product.category == "foliage").all()
     return [
         {
+            "id": f.id,
             "name": f.name,
             "price": f.price,
             "image": f"/images/{f.image}",
@@ -122,6 +127,7 @@ def list_papers(db: Session = Depends(get_db)):
     papers = db.query(Product).filter(Product.category == "paper").all()
     return [
         {
+            "id": f.id,
             "name": f.name,
             "price": f.price,
             "image": f"/images/{f.image}",
@@ -135,6 +141,7 @@ def list_ribbons(db: Session = Depends(get_db)):
     ribbons = db.query(Product).filter(Product.category == "ribbon").all()
     return [
         {
+            "id": f.id,
             "name": f.name,
             "price": f.price,
             "image": f"/images/{f.image}",
@@ -182,3 +189,90 @@ def get_ribbon_image(name: str, db: Session = Depends(get_db)):
     if not os.path.exists(image_path):
         raise HTTPException(status_code=404, detail="Image file not found")
     return FileResponse(image_path)
+
+class ItemBase(BaseModel):
+    id: int
+    icon: Optional[str] = None
+
+class FlowerItem(ItemBase):
+    quantity: int
+
+class PaperItem(ItemBase):
+    pass
+
+class RibbonItem(ItemBase):
+    pass
+
+class VisualizationRequest(BaseModel):
+    flowers: List[FlowerItem] = []
+    papers: List[PaperItem] = []
+    ribbons: List[RibbonItem] = []
+
+class VisualizationResponse(BaseModel):
+    imageUrl: str
+
+@app.post("/api/visualization", response_model=VisualizationResponse)
+async def generate_visualization(
+    request: VisualizationRequest,
+    db: Session = Depends(get_db)
+):    
+    order_data = {'flowers': [], 'papers': [], 'ribbons': []}
+    missing = []
+
+    # flowers (allow category 'flower' AND 'foliage')
+    for flower_item in request.flowers:
+        product = db.query(Product).filter(Product.id == flower_item.id).first()
+        if not product:
+            missing.append(f"flower:{flower_item.id}")
+            continue
+        
+        # Validate if it's acceptable category for "flowers" list in visualization
+        if product.category not in ["flower", "foliage"]:
+            missing.append(f"flower:{flower_item.id} (wrong category)")
+            continue
+
+        if product.max_quantity > 0 and flower_item.quantity > product.max_quantity:
+            raise HTTPException(status_code=400, detail=f"Requested quantity for '{product.name}' exceeds max ({product.max_quantity})")
+        order_data['flowers'].append({
+            'id': product.id,
+            'name': product.name,
+            'quantity': flower_item.quantity,
+            'icon': f"/images/{product.image}" if product.image else None
+        })
+    
+    # papers
+    for paper_item in request.papers:
+        product = db.query(Product).filter(Product.id == paper_item.id, Product.category == "paper").first()
+        if not product:
+            missing.append(f"paper:{paper_item.id}")
+            continue
+        if product.max_quantity > 0:
+            if product.max_quantity < 1:
+                raise HTTPException(status_code=400, detail=f"Invalid max_quantity for paper '{product.name}'")
+        order_data['papers'].append({
+            'id': product.id,
+            'name': product.name,
+            'icon': f"/images/{product.image}" if product.image else None
+        })
+    
+    # ribbons
+    for ribbon_item in request.ribbons:
+        product = db.query(Product).filter(Product.id == ribbon_item.id, Product.category == "ribbon").first()
+        if not product:
+            missing.append(f"ribbon:{ribbon_item.id}")
+            continue
+        if product.max_quantity > 0:
+            if product.max_quantity < 1:
+                raise HTTPException(status_code=400, detail=f"Invalid max_quantity for ribbon '{product.name}'")
+        order_data['ribbons'].append({
+            'id': product.id,
+            'name': product.name,
+            'icon': f"/images/{product.image}" if product.image else None
+        })
+    
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Products error: {', '.join(missing)}")
+
+    image_url = await generate_bouquet_visualization(order_data)
+    
+    return VisualizationResponse(imageUrl=image_url)
