@@ -31,7 +31,6 @@ def get_model():
 
 
 async def generate_bouquet_visualization(order_data: dict) -> str:    
-    # Przygotuj opis bukietu dla AI
     prompt = create_prompt_from_order(order_data)
     print(order_data)
     
@@ -58,7 +57,6 @@ async def generate_bouquet_visualization(order_data: dict) -> str:
 
 
 def create_prompt_from_order(order_data: dict) -> str:
-    """Tworzy prompt dla AI na podstawie danych zamówienia"""
     
     flowers = order_data.get('flowers', [])
     papers = order_data.get('papers', [])

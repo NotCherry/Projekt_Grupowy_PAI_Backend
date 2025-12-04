@@ -1,15 +1,14 @@
 from sqlite3 import IntegrityError
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 import os
 from database import engine, get_db, SessionLocal
-from models import Base, Product
-from typing import List, Optional
-from pydantic import BaseModel
+from models import *
+
 from ai_service import generate_bouquet_visualization
 
 app = FastAPI()
@@ -93,6 +92,10 @@ def startup_event():
         db.rollback()
     finally:
         db.close()
+
+@app.get("/")
+def read_root():
+    return RedirectResponse(url="http://localhost:9000")      
 
 @app.get("/flowers")
 def list_flowers(db: Session = Depends(get_db)):
@@ -190,89 +193,180 @@ def get_ribbon_image(name: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Image file not found")
     return FileResponse(image_path)
 
-class ItemBase(BaseModel):
-    id: int
-    icon: Optional[str] = None
-
-class FlowerItem(ItemBase):
-    quantity: int
-
-class PaperItem(ItemBase):
-    pass
-
-class RibbonItem(ItemBase):
-    pass
-
-class VisualizationRequest(BaseModel):
-    flowers: List[FlowerItem] = []
-    papers: List[PaperItem] = []
-    ribbons: List[RibbonItem] = []
-
-class VisualizationResponse(BaseModel):
-    imageUrl: str
-
 @app.post("/api/visualization", response_model=VisualizationResponse)
 async def generate_visualization(
     request: VisualizationRequest,
     db: Session = Depends(get_db)
-):    
+):
     order_data = {'flowers': [], 'papers': [], 'ribbons': []}
     missing = []
 
-    # flowers (allow category 'flower' AND 'foliage')
     for flower_item in request.flowers:
         product = db.query(Product).filter(Product.id == flower_item.id).first()
         if not product:
             missing.append(f"flower:{flower_item.id}")
             continue
-        
-        # Validate if it's acceptable category for "flowers" list in visualization
+
         if product.category not in ["flower", "foliage"]:
             missing.append(f"flower:{flower_item.id} (wrong category)")
             continue
 
         if product.max_quantity > 0 and flower_item.quantity > product.max_quantity:
-            raise HTTPException(status_code=400, detail=f"Requested quantity for '{product.name}' exceeds max ({product.max_quantity})")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Requested quantity for '{product.name}' exceeds max ({product.max_quantity})"
+            )
         order_data['flowers'].append({
             'id': product.id,
             'name': product.name,
             'quantity': flower_item.quantity,
             'icon': f"/images/{product.image}" if product.image else None
         })
-    
-    # papers
+
     for paper_item in request.papers:
-        product = db.query(Product).filter(Product.id == paper_item.id, Product.category == "paper").first()
+        product = db.query(Product).filter(
+            Product.id == paper_item.id,
+            Product.category == "paper"
+        ).first()
         if not product:
             missing.append(f"paper:{paper_item.id}")
             continue
-        if product.max_quantity > 0:
-            if product.max_quantity < 1:
-                raise HTTPException(status_code=400, detail=f"Invalid max_quantity for paper '{product.name}'")
+        if product.max_quantity > 0 and product.max_quantity < 1:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid max_quantity for paper '{product.name}'"
+            )
         order_data['papers'].append({
             'id': product.id,
             'name': product.name,
             'icon': f"/images/{product.image}" if product.image else None
         })
-    
-    # ribbons
+
     for ribbon_item in request.ribbons:
-        product = db.query(Product).filter(Product.id == ribbon_item.id, Product.category == "ribbon").first()
+        product = db.query(Product).filter(
+            Product.id == ribbon_item.id,
+            Product.category == "ribbon"
+        ).first()
         if not product:
             missing.append(f"ribbon:{ribbon_item.id}")
             continue
-        if product.max_quantity > 0:
-            if product.max_quantity < 1:
-                raise HTTPException(status_code=400, detail=f"Invalid max_quantity for ribbon '{product.name}'")
+        if product.max_quantity > 0 and product.max_quantity < 1:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid max_quantity for ribbon '{product.name}'"
+            )
         order_data['ribbons'].append({
             'id': product.id,
             'name': product.name,
             'icon': f"/images/{product.image}" if product.image else None
         })
-    
+
     if missing:
         raise HTTPException(status_code=400, detail=f"Products error: {', '.join(missing)}")
 
     image_url = await generate_bouquet_visualization(order_data)
-    
+
     return VisualizationResponse(imageUrl=image_url)
+
+
+@app.post("/orders", response_model=CreateOrderResponse)
+def create_order(
+    request: CreateOrderRequest,
+    db: Session = Depends(get_db)
+):
+    """Zapisuje zamówienie bez generowania wizualizacji"""
+    
+    new_order = Order()
+    db.add(new_order)
+    db.flush()
+    
+    # Flowers + foliage
+    for flower_item in request.flowers:
+        product = db.query(Product).filter(Product.id == flower_item.id).first()
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Product {flower_item.id} not found")
+        
+        if product.category not in ["flower", "foliage"]:
+            raise HTTPException(status_code=400, detail=f"Product {flower_item.id} is not a flower/foliage")
+        
+        if product.max_quantity > 0 and flower_item.quantity > product.max_quantity:
+            raise HTTPException(status_code=400, detail=f"Quantity exceeds max for {product.name}")
+        
+        db.add(OrderItem(
+            order_id=new_order.id,
+            product_id=product.id,
+            category=product.category,
+            quantity=flower_item.quantity
+        ))
+    
+    # Papers
+    for paper_item in request.papers:
+        product = db.query(Product).filter(
+            Product.id == paper_item.id,
+            Product.category == "paper"
+        ).first()
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Paper {paper_item.id} not found")
+        
+        db.add(OrderItem(
+            order_id=new_order.id,
+            product_id=product.id,
+            category="paper",
+            quantity=1
+        ))
+    
+    # Ribbons
+    for ribbon_item in request.ribbons:
+        product = db.query(Product).filter(
+            Product.id == ribbon_item.id,
+            Product.category == "ribbon"
+        ).first()
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Ribbon {ribbon_item.id} not found")
+        
+        db.add(OrderItem(
+            order_id=new_order.id,
+            product_id=product.id,
+            viz_id=request.visualization_id,
+            category="ribbon",
+            quantity=1
+        ))
+    
+    db.commit()
+    db.refresh(new_order)
+    
+    return CreateOrderResponse(
+        order_id=new_order.id,
+        message="Order created successfully"
+    )
+
+
+@app.get("/orders/{order_id}", response_model=OrderDetailResponse)
+def get_order(order_id: int, db: Session = Depends(get_db)):
+    """Zwraca szczegóły zamówienia"""
+    
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    items = []
+    total_price = 0
+    
+    for order_item in order.items:
+        product = order_item.product
+        item_total = product.price * order_item.quantity
+        total_price += item_total
+        
+        items.append(OrderItemResponse(
+            product_id=product.id,
+            product_name=product.name,
+            category=order_item.category,
+            quantity=order_item.quantity,
+            price=product.price
+        ))
+    
+    return OrderDetailResponse(
+        order_id=order.id,
+        items=items,
+        total_price=total_price
+    )
