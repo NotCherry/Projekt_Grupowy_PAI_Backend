@@ -1,0 +1,37 @@
+### GET all flowers
+GET http://localhost:9000/flowers
+Content-Type: application/json
+
+### GET all papers
+GET http://localhost:9000/papers
+
+### GET all ribbons
+GET http://localhost:9000/ribbons
+
+### POST create order
+POST http://localhost:9000/orders
+Content-Type: application/json
+
+{
+  "flowers": [
+    {
+      "id": 1,
+      "quantity": 5
+    },
+    {
+      "id": 2,
+      "quantity": 3
+    }
+  ],
+  "papers": [
+    {
+      "id": 21
+    }
+  ],
+  "ribbons": [
+    {
+      "id": 30
+    }
+  ], 
+  "visualization_id": "" 
+}
