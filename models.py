@@ -36,7 +36,7 @@ class OrderItem(Base):
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     category = Column(String, nullable=False)   # flower/paper/ribbon/foliage
     quantity = Column(Integer, default=1)
-
+    viz_id = Column(Integer, nullable=True)
     order = relationship("Order", back_populates="items")
     product = relationship("Product")
 
@@ -60,13 +60,13 @@ class VisualizationRequest(BaseModel):
 
 class VisualizationResponse(BaseModel):
     imageUrl: str
-    order_id: int
 
 
 class CreateOrderRequest(BaseModel):
     flowers: List[FlowerItem] = []
     papers: List[PaperItem] = []
     ribbons: List[RibbonItem] = []
+    visualization_id: Optional[int] = None
 
 class CreateOrderResponse(BaseModel):
     order_id: int
@@ -81,6 +81,5 @@ class OrderItemResponse(BaseModel):
 
 class OrderDetailResponse(BaseModel):
     order_id: int
-    image_url: Optional[str]
     items: List[OrderItemResponse]
     total_price: int

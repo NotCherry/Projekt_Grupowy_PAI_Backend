@@ -33,5 +33,5 @@ Content-Type: application/json
       "id": 30
     }
   ], 
-  "visualization_id": "" 
+  "visualization_id": 1
 }

@@ -201,7 +201,6 @@ async def generate_visualization(
     order_data = {'flowers': [], 'papers': [], 'ribbons': []}
     missing = []
 
-    # flowers (allow category 'flower' AND 'foliage')
     for flower_item in request.flowers:
         product = db.query(Product).filter(Product.id == flower_item.id).first()
         if not product:
@@ -223,7 +222,7 @@ async def generate_visualization(
             'quantity': flower_item.quantity,
             'icon': f"/images/{product.image}" if product.image else None
         })
-
+    
     # papers
     for paper_item in request.papers:
         product = db.query(Product).filter(
@@ -243,7 +242,7 @@ async def generate_visualization(
             'name': product.name,
             'icon': f"/images/{product.image}" if product.image else None
         })
-
+    
     # ribbons
     for ribbon_item in request.ribbons:
         product = db.query(Product).filter(
@@ -271,106 +270,3 @@ async def generate_visualization(
     image_url = await generate_bouquet_visualization(order_data)
 
     return VisualizationResponse(imageUrl=image_url)
-
-
-@app.post("/orders", response_model=CreateOrderResponse)
-def create_order(
-    request: CreateOrderRequest,
-    db: Session = Depends(get_db)
-):
-    """Zapisuje zamówienie bez generowania wizualizacji"""
-    
-    new_order = Order()
-    db.add(new_order)
-    db.flush()
-    
-    # Flowers + foliage
-    for flower_item in request.flowers:
-        product = db.query(Product).filter(Product.id == flower_item.id).first()
-        if not product:
-            raise HTTPException(status_code=404, detail=f"Product {flower_item.id} not found")
-        
-        if product.category not in ["flower", "foliage"]:
-            raise HTTPException(status_code=400, detail=f"Product {flower_item.id} is not a flower/foliage")
-        
-        if product.max_quantity > 0 and flower_item.quantity > product.max_quantity:
-            raise HTTPException(status_code=400, detail=f"Quantity exceeds max for {product.name}")
-        
-        db.add(OrderItem(
-            order_id=new_order.id,
-            product_id=product.id,
-            category=product.category,
-            quantity=flower_item.quantity
-        ))
-    
-    # Papers
-    for paper_item in request.papers:
-        product = db.query(Product).filter(
-            Product.id == paper_item.id,
-            Product.category == "paper"
-        ).first()
-        if not product:
-            raise HTTPException(status_code=404, detail=f"Paper {paper_item.id} not found")
-        
-        db.add(OrderItem(
-            order_id=new_order.id,
-            product_id=product.id,
-            category="paper",
-            quantity=1
-        ))
-    
-    # Ribbons
-    for ribbon_item in request.ribbons:
-        product = db.query(Product).filter(
-            Product.id == ribbon_item.id,
-            Product.category == "ribbon"
-        ).first()
-        if not product:
-            raise HTTPException(status_code=404, detail=f"Ribbon {ribbon_item.id} not found")
-        
-        db.add(OrderItem(
-            order_id=new_order.id,
-            product_id=product.id,
-            category="ribbon",
-            quantity=1
-        ))
-    
-    db.commit()
-    db.refresh(new_order)
-    
-    return CreateOrderResponse(
-        order_id=new_order.id,
-        message="Order created successfully"
-    )
-
-
-@app.get("/orders/{order_id}", response_model=OrderDetailResponse)
-def get_order(order_id: int, db: Session = Depends(get_db)):
-    """Zwraca szczegóły zamówienia"""
-    
-    order = db.query(Order).filter(Order.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    
-    items = []
-    total_price = 0
-    
-    for order_item in order.items:
-        product = order_item.product
-        item_total = product.price * order_item.quantity
-        total_price += item_total
-        
-        items.append(OrderItemResponse(
-            product_id=product.id,
-            product_name=product.name,
-            category=order_item.category,
-            quantity=order_item.quantity,
-            price=product.price
-        ))
-    
-    return OrderDetailResponse(
-        order_id=order.id,
-        image_url=order.image_url,
-        items=items,
-        total_price=total_price
-    )
