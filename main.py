@@ -95,7 +95,7 @@ def startup_event():
 
 @app.get("/")
 def read_root():
-    return RedirectResponse(url="http://localhost:9000")      
+    return RedirectResponse(url="http://localhost:8000")      
 
 @app.get("/flowers")
 def list_flowers(db: Session = Depends(get_db)):
