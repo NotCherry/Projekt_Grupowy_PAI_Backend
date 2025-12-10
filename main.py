@@ -270,3 +270,81 @@ async def generate_visualization(
     image_url = await generate_bouquet_visualization(order_data)
 
     return VisualizationResponse(imageUrl=image_url)
+@app.post("/orders", response_model=CreateOrderResponse)
+def create_order(
+    request: CreateOrderRequest,
+    db: Session = Depends(get_db)
+):
+    """Zapisuje zamówienie z danymi formularza i wizualizacją"""
+    
+    # Tworzenie nowego zamówienia z danymi formularza
+    new_order = Order(
+        pseudonim=request.pseudonim,
+        data=request.data,
+        godzina=request.godzina,
+        odbior=request.odbior,
+        platnosc=request.platnosc
+    )
+    db.add(new_order)
+    db.flush()  # Pobierz ID przed dodaniem items
+    
+    # Flowers + foliage
+    for flower_item in request.flowers:
+        product = db.query(Product).filter(Product.id == flower_item.id).first()
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Product {flower_item.id} not found")
+        
+        if product.category not in ["flower", "foliage"]:
+            raise HTTPException(status_code=400, detail=f"Product {flower_item.id} is not a flower/foliage")
+        
+        if product.max_quantity > 0 and flower_item.quantity > product.max_quantity:
+            raise HTTPException(status_code=400, detail=f"Quantity exceeds max for {product.name}")
+        
+        db.add(OrderItem(
+            order_id=new_order.id,
+            product_id=product.id,
+            category=product.category,
+            quantity=flower_item.quantity,
+            viz_id=request.visualization_id
+        ))
+    
+    # Papers
+    for paper_item in request.papers:
+        product = db.query(Product).filter(
+            Product.id == paper_item.id,
+            Product.category == "paper"
+        ).first()
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Paper {paper_item.id} not found")
+        
+        db.add(OrderItem(
+            order_id=new_order.id,
+            product_id=product.id,
+            category=product.category,
+            quantity=1,
+            viz_id=request.visualization_id
+        ))
+    
+    # Ribbons
+    for ribbon_item in request.ribbons:
+        product = db.query(Product).filter(
+            Product.id == ribbon_item.id,
+            Product.category == "ribbon"
+        ).first()
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Ribbon {ribbon_item.id} not found")
+        
+        db.add(OrderItem(
+            order_id=new_order.id,
+            product_id=product.id,
+            category=product.category,
+            quantity=1,
+            viz_id=request.visualization_id
+        ))
+    
+    db.commit()
+    
+    return CreateOrderResponse(
+        order_id=new_order.id,
+        message="Order created successfully"
+    )
