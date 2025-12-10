@@ -348,3 +348,39 @@ def create_order(
         order_id=new_order.id,
         message="Order created successfully"
     )
+@app.get("/orders/{order_id}", response_model=OrderDetailResponse)
+def get_order(order_id: int, db: Session = Depends(get_db)):
+    """Zwraca szczegóły zamówienia z danymi klienta"""
+    
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    items = []
+    total_price = 0
+    
+    for order_item in order.items:
+        product = order_item.product
+        item_total = product.price * order_item.quantity
+        total_price += item_total
+        
+        items.append(OrderItemResponse(
+            product_id=product.id,
+            product_name=product.name,
+            category=order_item.category,
+            quantity=order_item.quantity,
+            price=product.price
+        ))
+    
+    return OrderDetailResponse(
+        order_id=order.id,
+        pseudonim=order.pseudonim,
+        data=order.data,
+        godzina=order.godzina,
+        odbior=order.odbior,
+        platnosc=order.platnosc,
+        items=items,
+        total_price=total_price,
+        image_url=order.image_url
+    )
+
