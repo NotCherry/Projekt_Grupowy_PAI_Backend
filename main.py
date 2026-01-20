@@ -1,3 +1,8 @@
+"""!
+@file main.py
+@brief Główna aplikacja FastAPI systemu kwiaciarni z generowaniem wizualizacji AI.
+"""
+
 from sqlite3 import IntegrityError
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.staticfiles import StaticFiles
@@ -8,11 +13,12 @@ from sqlalchemy import func
 import os
 from database import engine, get_db, SessionLocal
 from models import *
+from visualization import generate_bouquet_visualization
 
-from ai_service import generate_bouquet_visualization
 
 app = FastAPI()
 
+## Dozwolone źródła dla CORS
 origins = [
     "http://localhost:5500",    
     "http://127.0.0.1:5500",
@@ -20,6 +26,7 @@ origins = [
     "http://127.0.0.1:9000",
     "*",
 ]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,13 +35,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 app.mount("/images", StaticFiles(directory="images"), name="images")
 
 Base.metadata.create_all(bind=engine)
 
+
 @app.on_event("startup")
 def startup_event():
+    """!
+    @brief Inicjalizuje bazę danych przykładowymi produktami przy starcie aplikacji.
+    
+    Funkcja dodaje do bazy 15 kwiatów, 5 rodzajów zieleni, 5 papierów i 5 wstążek,
+    jeśli baza jest pusta.
+    """
     db = SessionLocal()
     try:
         flower_samples = [
@@ -93,12 +106,25 @@ def startup_event():
     finally:
         db.close()
 
+
 @app.get("/")
 def read_root():
+    """!
+    @brief Przekierowanie do głównej strony aplikacji.
+    
+    @return Redirect na localhost:8000
+    """
     return RedirectResponse(url="http://localhost:8000")      
+
 
 @app.get("/flowers")
 def list_flowers(db: Session = Depends(get_db)):
+    """!
+    @brief Zwraca listę wszystkich kwiatów.
+    
+    @param db Sesja bazodanowa
+    @return Lista kwiatów z ID, nazwą, ceną, obrazem i max ilością
+    """
     flowers = db.query(Product).filter(Product.category == "flower").all()
     return [
         {
@@ -111,8 +137,15 @@ def list_flowers(db: Session = Depends(get_db)):
         for f in flowers
     ]
 
+
 @app.get("/foliage")
 def list_foliage(db: Session = Depends(get_db)):
+    """!
+    @brief Zwraca listę wszystkich rodzajów zieleni.
+    
+    @param db Sesja bazodanowa
+    @return Lista zieleni z ID, nazwą, ceną, obrazem i max ilością
+    """
     foliage = db.query(Product).filter(Product.category == "foliage").all()
     return [
         {
@@ -125,8 +158,15 @@ def list_foliage(db: Session = Depends(get_db)):
         for f in foliage
     ]
 
+
 @app.get("/papers")
 def list_papers(db: Session = Depends(get_db)):
+    """!
+    @brief Zwraca listę wszystkich papierów ozdobnych.
+    
+    @param db Sesja bazodanowa
+    @return Lista papierów z ID, nazwą, ceną, obrazem i max ilością
+    """
     papers = db.query(Product).filter(Product.category == "paper").all()
     return [
         {
@@ -139,8 +179,15 @@ def list_papers(db: Session = Depends(get_db)):
         for f in papers
     ]
 
+
 @app.get("/ribbons")
 def list_ribbons(db: Session = Depends(get_db)):
+    """!
+    @brief Zwraca listę wszystkich wstążek.
+    
+    @param db Sesja bazodanowa
+    @return Lista wstążek z ID, nazwą, ceną, obrazem i max ilością
+    """
     ribbons = db.query(Product).filter(Product.category == "ribbon").all()
     return [
         {
@@ -153,8 +200,17 @@ def list_ribbons(db: Session = Depends(get_db)):
         for f in ribbons
     ]
 
+
 @app.get("/flowers/{name}", response_class=FileResponse)
 def get_flower_image(name: str, db: Session = Depends(get_db)):
+    """!
+    @brief Zwraca plik obrazu kwiatu.
+    
+    @param name Nazwa kwiatu
+    @param db Sesja bazodanowa
+    @return Plik obrazu
+    @throws HTTPException 404 jeśli kwiat lub plik nie istnieje
+    """
     flower = db.query(Product).filter(Product.name == name, Product.category == "flower").first()
     if not flower:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -163,8 +219,17 @@ def get_flower_image(name: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Image file not found")
     return FileResponse(image_path)
 
+
 @app.get("/foliage/{name}", response_class=FileResponse)
 def get_foliage_image(name: str, db: Session = Depends(get_db)):
+    """!
+    @brief Zwraca plik obrazu zieleni.
+    
+    @param name Nazwa zieleni
+    @param db Sesja bazodanowa
+    @return Plik obrazu
+    @throws HTTPException 404 jeśli zieleni lub plik nie istnieje
+    """
     foliage = db.query(Product).filter(Product.name == name, Product.category == "foliage").first()
     if not foliage:
         raise HTTPException(status_code=404, detail="Foliage not found")
@@ -173,8 +238,17 @@ def get_foliage_image(name: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Image file not found")
     return FileResponse(image_path)
 
+
 @app.get("/papers/{name}", response_class=FileResponse)
 def get_paper_image(name: str, db: Session = Depends(get_db)):
+    """!
+    @brief Zwraca plik obrazu papieru.
+    
+    @param name Nazwa papieru
+    @param db Sesja bazodanowa
+    @return Plik obrazu
+    @throws HTTPException 404 jeśli papier lub plik nie istnieje
+    """
     paper = db.query(Product).filter(Product.name == name, Product.category == "paper").first()
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found")
@@ -183,8 +257,17 @@ def get_paper_image(name: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Image file not found")
     return FileResponse(image_path)
 
+
 @app.get("/ribbons/{name}", response_class=FileResponse)
 def get_ribbon_image(name: str, db: Session = Depends(get_db)):
+    """!
+    @brief Zwraca plik obrazu wstążki.
+    
+    @param name Nazwa wstążki
+    @param db Sesja bazodanowa
+    @return Plik obrazu
+    @throws HTTPException 404 jeśli wstążka lub plik nie istnieje
+    """
     ribbon = db.query(Product).filter(Product.name == name, Product.category == "ribbon").first()
     if not ribbon:
         raise HTTPException(status_code=404, detail="Ribbon not found")
@@ -193,11 +276,23 @@ def get_ribbon_image(name: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Image file not found")
     return FileResponse(image_path)
 
+
 @app.post("/api/visualization", response_model=VisualizationResponse)
 async def generate_visualization(
     request: VisualizationRequest,
     db: Session = Depends(get_db)
 ):
+    """!
+    @brief Generuje wizualizację bukietu AI bez zapisywania zamówienia.
+    
+    Endpoint waliduje dostępność produktów i ich ilości, następnie wywołuje
+    model AI do wygenerowania obrazu bukietu.
+    
+    @param request Dane wizualizacji (kwiaty, papiery, wstążki)
+    @param db Sesja bazodanowa
+    @return URL do wygenerowanego obrazu w formacie base64
+    @throws HTTPException 400 jeśli produkty nie istnieją lub przekroczono max ilość
+    """
     order_data = {'flowers': [], 'papers': [], 'ribbons': []}
     missing = []
 
@@ -223,7 +318,6 @@ async def generate_visualization(
             'icon': f"/images/{product.image}" if product.image else None
         })
     
-    # papers
     for paper_item in request.papers:
         product = db.query(Product).filter(
             Product.id == paper_item.id,
@@ -243,7 +337,6 @@ async def generate_visualization(
             'icon': f"/images/{product.image}" if product.image else None
         })
     
-    # ribbons
     for ribbon_item in request.ribbons:
         product = db.query(Product).filter(
             Product.id == ribbon_item.id,
@@ -266,18 +359,28 @@ async def generate_visualization(
     if missing:
         raise HTTPException(status_code=400, detail=f"Products error: {', '.join(missing)}")
 
-    # tylko generacja wizualizacji - bez zapisu do bazy
     image_url = await generate_bouquet_visualization(order_data)
 
     return VisualizationResponse(imageUrl=image_url)
+
+
 @app.post("/orders", response_model=CreateOrderResponse)
 def create_order(
     request: CreateOrderRequest,
     db: Session = Depends(get_db)
 ):
-    """Zapisuje zamówienie z danymi formularza i wizualizacją"""
+    """!
+    @brief Tworzy nowe zamówienie w bazie danych.
     
-    # Tworzenie nowego zamówienia z danymi formularza
+    Endpoint zapisuje zamówienie wraz z danymi klienta (pseudonim, data odbioru,
+    sposób odbioru, płatność) oraz listą produktów.
+    
+    @param request Dane zamówienia z formularza i wybrane produkty
+    @param db Sesja bazodanowa
+    @return ID utworzonego zamówienia i komunikat potwierdzający
+    @throws HTTPException 404 jeśli produkt nie istnieje
+    @throws HTTPException 400 jeśli przekroczono maksymalną ilość produktu
+    """
     new_order = Order(
         pseudonim=request.pseudonim,
         data=request.data,
@@ -286,9 +389,8 @@ def create_order(
         platnosc=request.platnosc
     )
     db.add(new_order)
-    db.flush()  # Pobierz ID przed dodaniem items
+    db.flush()
     
-    # Flowers + foliage
     for flower_item in request.flowers:
         product = db.query(Product).filter(Product.id == flower_item.id).first()
         if not product:
@@ -308,7 +410,6 @@ def create_order(
             viz_id=request.visualization_id
         ))
     
-    # Papers
     for paper_item in request.papers:
         product = db.query(Product).filter(
             Product.id == paper_item.id,
@@ -325,7 +426,6 @@ def create_order(
             viz_id=request.visualization_id
         ))
     
-    # Ribbons
     for ribbon_item in request.ribbons:
         product = db.query(Product).filter(
             Product.id == ribbon_item.id,
@@ -348,10 +448,21 @@ def create_order(
         order_id=new_order.id,
         message="Order created successfully"
     )
+
+
 @app.get("/orders/{order_id}", response_model=OrderDetailResponse)
 def get_order(order_id: int, db: Session = Depends(get_db)):
-    """Zwraca szczegóły zamówienia z danymi klienta"""
+    """!
+    @brief Zwraca szczegóły zamówienia po ID.
     
+    Endpoint pobiera pełne informacje o zamówieniu: dane klienta, listę produktów,
+    całkowitą cenę oraz URL wizualizacji.
+    
+    @param order_id ID zamówienia
+    @param db Sesja bazodanowa
+    @return Szczegóły zamówienia z pozycjami i ceną całkowitą
+    @throws HTTPException 404 jeśli zamówienie nie istnieje
+    """
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -383,4 +494,3 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
         total_price=total_price,
         image_url=order.image_url
     )
-

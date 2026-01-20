@@ -1,0 +1,19 @@
+PROJECT_NAME = "Projekt grupowy PAI gr. 3"
+INPUT = .
+RECURSIVE = YES
+FILE_PATTERNS = *.py
+EXCLUDE_PATTERNS = */venv/* \
+                   */__pycache__/* \
+                   */.venv/* \
+                   *.pyc
+
+EXTRACT_ALL = YES
+OPTIMIZE_OUTPUT_JAVA = YES
+GENERATE_HTML = YES
+HTML_OUTPUT = html
+GENERATE_LATEX = NO
+
+HAVE_DOT = YES
+CALL_GRAPH = YES
+CALLER_GRAPH = YES
+CLASS_GRAPH = YES

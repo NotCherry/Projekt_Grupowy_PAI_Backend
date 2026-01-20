@@ -1,0 +1,5 @@
+<map id="visualization.get_model" name="visualization.get_model">
+<area shape="rect" id="Node000001" title="Ładuje model SDXS&#45;512 OpenVINO przy pierwszym wywołaniu." alt="" coords="207,13,364,40"/>
+<area shape="rect" id="Node000002" href="$namespacevisualization.html#a15d44300f40b165d427b75fd49e1b21a" title="Generuje wizualizację bukietu na podstawie danych zamówienia." alt="" coords="5,5,159,48"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="189,27,159,29,159,24,194,26"/>
+</map>

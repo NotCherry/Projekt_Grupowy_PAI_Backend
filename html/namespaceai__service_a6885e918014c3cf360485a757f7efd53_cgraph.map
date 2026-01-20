@@ -1,0 +1,9 @@
+<map id="ai_service.generate_bouquet_visualization" name="ai_service.generate_bouquet_visualization">
+<area shape="rect" id="Node000001" title=" " alt="" coords="5,72,159,115"/>
+<area shape="rect" id="Node000002" href="$namespaceai__service.html#aef4f4e63aacb296b9c259249135b0b37" title=" " alt="" coords="207,5,374,48"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="150,69,209,52,205,55,152,74"/>
+<area shape="rect" id="Node000003" href="$namespaceai__service.html#a3ae77560a933f9a9f9ecd63996b4e22e" title=" " alt="" coords="222,72,358,115"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="159,91,209,93,204,94,160,96"/>
+<area shape="rect" id="Node000004" href="$namespaceai__service.html#aa7a772e0458286a86e013e25ef364920" title=" " alt="" coords="218,139,362,165"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="160,112,228,133,223,134,159,118"/>
+</map>

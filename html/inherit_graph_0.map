@@ -1,0 +1,9 @@
+<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
+<area shape="rect" id="Node000000" title=" " alt="" coords="5,56,57,83"/>
+<area shape="rect" id="Node000001" href="$classmodels_1_1_order.html" title="Model zamówienia klienta." alt="" coords="118,5,217,32"/>
+<area shape="poly" id="edge1_Node000000_Node000001" title=" " alt="" coords="70,52,131,30,128,35,72,57"/>
+<area shape="rect" id="Node000002" href="$classmodels_1_1_order_item.html" title="Pozycja w zamówieniu." alt="" coords="105,56,230,83"/>
+<area shape="poly" id="edge2_Node000000_Node000002" title=" " alt="" coords="71,67,107,68,102,71,72,72"/>
+<area shape="rect" id="Node000003" href="$classmodels_1_1_product.html" title="Model produktu w sklepie kwiaciarni." alt="" coords="111,107,224,133"/>
+<area shape="poly" id="edge3_Node000000_Node000003" title=" " alt="" coords="71,81,132,105,127,108,70,87"/>
+</map>

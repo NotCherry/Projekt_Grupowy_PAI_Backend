@@ -1,0 +1,9 @@
+<map id="visualization.generate_bouquet_visualization" name="visualization.generate_bouquet_visualization">
+<area shape="rect" id="Node000001" title="Generuje wizualizację bukietu na podstawie danych zamówienia." alt="" coords="5,72,159,115"/>
+<area shape="rect" id="Node000002" href="$namespacevisualization.html#ac603fe0e2616b85f595a8e1c04b534d9" title="Tworzy tekstowy prompt dla modelu AI na podstawie składu zamówienia." alt="" coords="217,5,354,48"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="148,69,206,52,201,55,150,74"/>
+<area shape="rect" id="Node000003" href="$namespacevisualization.html#ac53acd658a89d32a386163653c020e14" title="Zwraca URL do obrazu zastępczego w przypadku błędu." alt="" coords="212,72,359,115"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="159,91,199,93,193,94,160,96"/>
+<area shape="rect" id="Node000004" href="$namespacevisualization.html#af598eb2687bee99eee92c8a54eca618d" title="Ładuje model SDXS&#45;512 OpenVINO przy pierwszym wywołaniu." alt="" coords="207,139,364,165"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="158,113,225,133,220,134,158,118"/>
+</map>
