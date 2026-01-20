@@ -57,3 +57,6 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 python -m uvicorn main:app --reload --port 9000
 ```
+
+# Frontend 
+[repo](https://github.com/NotCherry/Projekt_Grupowy_PAI)
